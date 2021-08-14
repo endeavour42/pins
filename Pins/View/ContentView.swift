@@ -30,9 +30,16 @@ struct ContentView: View {
                         if #available(iOS 15.0, macOS 12.0, *) {
                             HStack {
                                 ForEach(model.lastImageUrls) { url in
-                                    AsyncImage(url: url).frame(width: 32, height: 32)
+                                    AsyncImage(url: url)
+                                        .scaledToFit()
+                                        .frame(width: 32, height: 32)
+                                        .clipShape(Circle())
+                                        .overlay(
+                                            Circle().stroke(Color.white, lineWidth: 25/10))
+                                        .shadow(color: .black, radius: 5, x: 2, y: 2)
                                 }
                             }
+                            .animation(.default)
                         }
                     #endif
                 }

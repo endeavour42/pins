@@ -72,12 +72,12 @@ struct Rule: Codable {
 }
 
 struct UsageCap: Codable {
-    let account_id: Int
-    let product_name: String
-    let title: String   // UsageCapExceeded
+    let account_id: Int?
+    let product_name: String?
+    let title: String   // UsageCapExceeded, ConnectionException
     let period: String? // Monthly
     let scope: String?  // Product
     let detail: String  // Usage cap exceeded: Monthly product cap
-    let type: String?   // https://api.twitter.com/2/problems/usage-capped
+    let type: String   // https://api.twitter.com/2/problems/usage-capped
 }
 

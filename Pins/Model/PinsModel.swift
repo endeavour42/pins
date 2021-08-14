@@ -15,6 +15,8 @@ class PinsModel: NSObject, ObservableObject {
     var streamTask: URLSessionDataTask?
     private var oneShotTimer: Timer?
     private var errorSetCount = 0
+    private var accumulatedData = Data()
+    private let separator = Data([0x0d, 0x0a])
 
     private override init() {
         super.init()
@@ -62,7 +64,7 @@ class PinsModel: NSObject, ObservableObject {
         if n > 10 {
             urls = Array(urls.dropFirst(n - 10))
         }
-        lastImageUrls = urls.reversed()
+        lastImageUrls = urls
     }
     
 
@@ -76,6 +78,7 @@ class PinsModel: NSObject, ObservableObject {
                 pins = []
                 lastImageUrls = []
                 eventCount = 0
+                accumulatedData = Data()
                 if searchString == "" { return }
                 startStream(searchString)
             }
@@ -103,6 +106,10 @@ class PinsModel: NSObject, ObservableObject {
 extension PinsModel: URLSessionDelegate, URLSessionDataDelegate {
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         
+        /// NOTE: the comment below is no longer valid and is for historical purposes only. the proper solution is implemented down below after this comment.
+        /// see the git history if you are interested to see the original code, which was working but was fragile and not entirely correct.
+        ///
+        /// ===================== CUT =====================
         /// TODO: this is a preliminary code.
         ///
         /// the sream format is "event \r\n event \r\n .."
@@ -150,23 +157,23 @@ extension PinsModel: URLSessionDelegate, URLSessionDataDelegate {
         ///
         /// TODO
         ///
-        
-        guard let string = String(data: data, encoding: .utf8) else {
-            delayedLastError = NSError(domain: "X", code: -1, userInfo: [NSLocalizedDescriptionKey : "not utf8"])
-            return
-        }
-        
-        let components = string.components(separatedBy: "\r\n")
-        
-        for eventString in components {
-            guard let eventData = eventString.data(using: .utf8) else {
-                delayedLastError = NSError(domain: "X", code: -1, userInfo: [NSLocalizedDescriptionKey : "not utf8"])
-                return
+        /// update4. implemented
+        /// ===================== CUT =====================
+
+        accumulatedData.append(contentsOf: data)
+
+        while true {
+            guard let separatorRange = accumulatedData.range(of: separator) else {
+                break
             }
+            let packetRange = accumulatedData.startIndex ..< separatorRange.endIndex
+            let eventRange = accumulatedData.startIndex ..< separatorRange.startIndex
+            let eventData = accumulatedData.subdata(in: eventRange)
+            accumulatedData.removeSubrange(packetRange)
             if !eventData.isEmpty {
                 handleEventData(eventData)
                 #if DEBUG
-                    print("eventString: \(eventString)")
+                    print(String(data: eventData, encoding: .utf8) ?? "not utf8?")
                 #endif
             }
         }
