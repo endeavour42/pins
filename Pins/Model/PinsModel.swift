@@ -119,11 +119,37 @@ extension PinsModel: URLSessionDelegate, URLSessionDataDelegate {
         ///
         /// ok for now for the test app but for the real app all this needs to be addressed
         ///
-        /// update: json format doesn't allow control symbols (symbols less than 0x20). but that's in strings only!
+        /// update1
+        /// update: json format doesn't allow control symbols (symbols less than 0x20).
+        /// so \r\n (0d0a) symbols are good separators indeed as they can not appear in the content strings.
+        /// to avoid the Data -> String -> Data trip i can use Data().firstIndex(of: 0x0d) + 0x0a
+        /// or Data().range(of: crlfData) where crlfData = Data([0x0D, 0x0A])
+        /// then split data on the event separators. the further complication is that \r and \n symbols might
+        /// appear in different data blocks (this is TCP). all in all the algorithm here shall be something like so:
+        /// - append received data chunk into an accumulated data variable
+        /// - loop {
+        ///   - scan the accumulated data from the start and look for the first 0d0a sequence
+        ///   - if not found - nothing to do, break from loop
+        ///   - if found - "cut" the event out from the accumulated data along with its trailing 0d0a sequence
+        ///   - process the event
+        /// - } loop until there is no more 0d0a sequences in the accumulated data
+        ///
+        /// so it is important to look not at the individual chunks as they arrive but at the whole accumulated data.
+        /// this is TBD
+        ///
+        /// update2: json format doesn't allow control symbols (symbols less than 0x20). but that's in strings only!
         /// \r and \n can be used as JSON whitespace. the algorithm that merely looks at "\r\n" sequence and considers
         /// those symbols to mean event separator is technically wrong. one solution that springs to mind - a custom JSON parser.
         /// or a dependency on the (unwritten?) rule that \r\n sequence will not happen in the source material other than for the separators.
         /// TBC
+        ///
+        /// update3: from the docs: "Your client should use the \r\n character to break activities apart as they are read in from the stream." this looks like a solid guarantee to me that there won't be a sequence of \r\n within the individual json messages (used as a whitespace).
+        /// this makes the algorithm outlined in "update1" workable and there is no need for a custom json parser.
+        /// note there are other types of messages (keep-alive and system)
+        /// https://developer.twitter.com/en/docs/tutorials/consuming-streaming-data
+        ///
+        /// TODO
+        ///
         
         guard let string = String(data: data, encoding: .utf8) else {
             delayedLastError = NSError(domain: "X", code: -1, userInfo: [NSLocalizedDescriptionKey : "not utf8"])
