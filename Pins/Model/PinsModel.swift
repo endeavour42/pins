@@ -162,19 +162,16 @@ extension PinsModel: URLSessionDelegate, URLSessionDataDelegate {
 
         accumulatedData.append(contentsOf: data)
 
-        while true {
-            guard let separatorRange = accumulatedData.range(of: separator) else {
-                break
-            }
+        while let separatorRange = accumulatedData.range(of: separator) {
             let packetRange = accumulatedData.startIndex ..< separatorRange.endIndex
             let eventRange = accumulatedData.startIndex ..< separatorRange.startIndex
             let eventData = accumulatedData.subdata(in: eventRange)
             accumulatedData.removeSubrange(packetRange)
             if !eventData.isEmpty {
-                handleEventData(eventData)
                 #if DEBUG
                     print(String(data: eventData, encoding: .utf8) ?? "not utf8?")
                 #endif
+                handleEventData(eventData)
             }
         }
     }
